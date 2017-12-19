@@ -30,7 +30,7 @@ func (c BTCMarketsClient) DefaultTick() (tr TickResponse, err error) {
 }
 
 //Tick get current tick details
-func (c BTCMarketsClient) Tick(CurrencyFrom, CurrencyTo string) (tr ccg.Tick, err error) {
+func (c BTCMarketsClient) Tick(CurrencyFrom, CurrencyTo string) (tr ccg.TickFloat, err error) {
 	all, err := getBody(c.Domain + "/market/" + CurrencyTo + "/" + CurrencyFrom + "/tick")
 	if err != nil {
 		return

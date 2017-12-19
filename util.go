@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -66,7 +65,6 @@ func (c BTCMarketsClient) signAnd(URI string, i interface{}, do string) ([]byte,
 	} else {
 		body = []byte("")
 	}
-	spew.Dump(i)
 	client := http.Client{}
 	now, signature := c.sign(URI, string(body))
 	URL := c.Domain + URI
