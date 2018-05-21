@@ -177,15 +177,14 @@ type OrderHistorySingleResponse struct {
 
 func (ohsr OrderHistorySingleResponse) convert() ccg.OrderDetails {
 	return ccg.OrderDetails{
-		Created:           time.Unix(ohsr.CreationTime/1000, 0),
-		OrderID:           ohsr.ID,
-		OrderSide:         ohsr.OrderSide,
-		OrderType:         ohsr.OrderType,
-		PrimaryCurrency:   ohsr.Instrument,
-		SecondaryCurrency: ohsr.Currency,
-		VolumeOrdered:     ohsr.Volume,
-		VolumeFilled:      ohsr.Volume - ohsr.OpenVolume,
-		Price:             ohsr.Price,
+		Created:       time.Unix(ohsr.CreationTime/1000, 0),
+		OrderID:       ohsr.ID,
+		OrderSide:     ohsr.OrderSide,
+		OrderType:     ohsr.OrderType,
+		Currency:      ccg.CurrencyPair{Primary: ohsr.Instrument, Secondary: ohsr.Currency},
+		VolumeOrdered: ohsr.Volume,
+		VolumeFilled:  ohsr.Volume - ohsr.OpenVolume,
+		Price:         ohsr.Price,
 	}
 }
 
@@ -200,20 +199,20 @@ type OrderHistoryTradeResponse struct {
 }
 
 //OrderHistory gets the users order history
-func (c BTCMarketsClient) OrderHistory(PrimaryCurrency, SecondaryCurrency string, limit int) (ccg.OrdersDetails, error) {
-	return c.OrderHistorySince(PrimaryCurrency, SecondaryCurrency, limit, 0)
+func (c BTCMarketsClient) OrderHistory(Currency ccg.CurrencyPair, limit int) (ccg.OrdersDetails, error) {
+	return c.OrderHistorySince(Currency, limit, 0)
 }
 
 //OrderHistorySince gets the order history since specified time (Unix time in ms)
-func (c BTCMarketsClient) OrderHistorySince(PrimaryCurrency, SecondaryCurrency string, limit int, since int64) (ccg.OrdersDetails, error) {
-	return c.orderHistory(PrimaryCurrency, SecondaryCurrency, limit, since, 1)
+func (c BTCMarketsClient) OrderHistorySince(Currency ccg.CurrencyPair, limit int, since int64) (ccg.OrdersDetails, error) {
+	return c.orderHistory(Currency, limit, since, 1)
 }
 
 //mode;
 //0 Open order history
 //1 All order history
 //2 Trade history
-func (c BTCMarketsClient) orderHistory(PrimaryCurrency, SecondaryCurrency string, limit int, since int64, mode int) (ccg.OrdersDetails, error) {
+func (c BTCMarketsClient) orderHistory(Currency ccg.CurrencyPair, limit int, since int64, mode int) (ccg.OrdersDetails, error) {
 	var URI string
 	switch mode {
 	case 0:
@@ -226,8 +225,8 @@ func (c BTCMarketsClient) orderHistory(PrimaryCurrency, SecondaryCurrency string
 		return ccg.OrdersDetails{}, errors.New("mode somehow set incorrectly in private function")
 	}
 	ohr := OrderHistoryRequest{
-		SecondaryCurrency: SecondaryCurrency,
-		PrimaryCurrency:   PrimaryCurrency,
+		SecondaryCurrency: Currency.Secondary,
+		PrimaryCurrency:   Currency.Primary,
 		Limit:             limit,
 		Since:             since,
 	}
@@ -248,9 +247,9 @@ func (c BTCMarketsClient) orderHistory(PrimaryCurrency, SecondaryCurrency string
 }
 
 //GetOpenOrders gets the current open orders
-func (c BTCMarketsClient) GetOpenOrders(Primary, Secondary string) (ccg.OrdersDetails, error) {
+func (c BTCMarketsClient) GetOpenOrders(Currency ccg.CurrencyPair) (ccg.OrdersDetails, error) {
 	//TODO:FIX ME
-	return c.orderHistory(Primary, Secondary, 200, 33434568724, 0)
+	return c.orderHistory(Currency, 200, 33434568724, 0)
 	/*
 		function getOpenOrders(){
 			$.get("/data/trading/orders",function(data,status){
@@ -294,15 +293,16 @@ type OrderDetailsResponse struct {
 
 func (odr OrderDetailsResponse) convert() ccg.OrderDetails {
 	return ccg.OrderDetails{
-		Created:           time.Unix(odr.CreationTime/1000, 0),
-		OrderID:           int64(odr.ID),
-		OrderSide:         odr.OrderSide,
-		OrderType:         odr.OrderType,
-		PrimaryCurrency:   odr.Instrument,
-		SecondaryCurrency: odr.Currency,
-		VolumeOrdered:     odr.Volume,
-		VolumeFilled:      odr.Volume - odr.OpenVolume,
-		Price:             odr.Price,
+		Created:   time.Unix(odr.CreationTime/1000, 0),
+		OrderID:   int64(odr.ID),
+		OrderSide: odr.OrderSide,
+		OrderType: odr.OrderType,
+		Currency: ccg.CurrencyPair{
+			Primary:   odr.Instrument,
+			Secondary: odr.Currency},
+		VolumeOrdered: odr.Volume,
+		VolumeFilled:  odr.Volume - odr.OpenVolume,
+		Price:         odr.Price,
 	}
 }
 
@@ -337,27 +337,27 @@ func (c BTCMarketsClient) GetOrderDetails(orderID int) (ccg.OrderDetails, error)
 //PlaceMarketBuyOrder places a market order
 // Price and volume are both *10^-8, as specified in the BTCMarkets API;
 // ie: $12.34 = 1,234,000,000; 12.34BTC=1,234,000,000
-func (c BTCMarketsClient) PlaceMarketBuyOrder(PrimaryCurrency, SecondaryCurrency string, amount int64) (ccg.PlacedOrder, error) {
-	return c.createOrder(PrimaryCurrency, SecondaryCurrency, 0, amount, true, true)
+func (c BTCMarketsClient) PlaceMarketBuyOrder(Currency ccg.CurrencyPair, amount int64) (ccg.PlacedOrder, error) {
+	return c.createOrder(Currency.Primary, Currency.Secondary, 0, amount, true, true)
 }
 
 //PlaceLimitBuyOrder places a limit order for the specified price, that is, the price and amount will be the trades.
 // Price and volume are both *10^-8, as specified in the BTCMarkets API;
 // ie: $12.34 = 1,234,000,000; 12.34BTC=1,234,000,000
-func (c BTCMarketsClient) PlaceLimitBuyOrder(PrimaryCurrency, SecondaryCurrency string, amount, price int64) (ccg.PlacedOrder, error) {
-	return c.createOrder(PrimaryCurrency, SecondaryCurrency, price, amount, true, false)
+func (c BTCMarketsClient) PlaceLimitBuyOrder(Currency ccg.CurrencyPair, amount, price int64) (ccg.PlacedOrder, error) {
+	return c.createOrder(Currency.Primary, Currency.Secondary, price, amount, true, false)
 }
 
 //PlaceMarketSellOrder places a market order
 // Price and volume are both *10^-8, as specified in the BTCMarkets API;
 // ie: $12.34 = 1,234,000,000; 12.34BTC=1,234,000,000
-func (c BTCMarketsClient) PlaceMarketSellOrder(PrimaryCurrency, SecondaryCurrency string, amount int64) (ccg.PlacedOrder, error) {
-	return c.createOrder(PrimaryCurrency, SecondaryCurrency, 0, amount, false, true)
+func (c BTCMarketsClient) PlaceMarketSellOrder(Currency ccg.CurrencyPair, amount int64) (ccg.PlacedOrder, error) {
+	return c.createOrder(Currency.Primary, Currency.Secondary, 0, amount, false, true)
 }
 
 //PlaceLimitSellOrder places a limit order for the specified price, that is, the price and amount will be the trades.
 // Price and volume are both *10^-8, as specified in the BTCMarkets API;
 // ie: $12.34 = 1,234,000,000; 12.34BTC=1,234,000,000
-func (c BTCMarketsClient) PlaceLimitSellOrder(PrimaryCurrency, SecondaryCurrency string, amount, price int64) (ccg.PlacedOrder, error) {
-	return c.createOrder(PrimaryCurrency, SecondaryCurrency, price, amount, false, false)
+func (c BTCMarketsClient) PlaceLimitSellOrder(Currency ccg.CurrencyPair, amount, price int64) (ccg.PlacedOrder, error) {
+	return c.createOrder(Currency.Primary, Currency.Secondary, price, amount, false, false)
 }

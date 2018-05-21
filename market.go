@@ -30,8 +30,8 @@ func (c BTCMarketsClient) DefaultTick() (tr TickResponse, err error) {
 }
 
 //Tick get current tick details
-func (c BTCMarketsClient) Tick(CurrencyFrom, CurrencyTo string) (tr ccg.Tick, err error) {
-	all, err := getBody(c.Domain + "/market/" + CurrencyTo + "/" + CurrencyFrom + "/tick")
+func (c BTCMarketsClient) Tick(Currency ccg.CurrencyPair) (tr ccg.Tick, err error) {
+	all, err := getBody(c.Domain + "/market/" + Currency.Primary + "/" + Currency.Secondary + "/tick")
 	if err != nil {
 		return
 	}
@@ -50,10 +50,10 @@ type OrderBookResponse struct {
 
 func (obr OrderBookResponse) convert() (ccg.OrderBook, error) {
 	result := ccg.OrderBook{
-		PrimaryCurrency:   obr.Instrument,
-		SecondaryCurrency: obr.Currency,
-		BuyOrders:         ccg.Orders(make([]ccg.Order, len(obr.Bids))),
-		SellOrders:        ccg.Orders(make([]ccg.Order, len(obr.Asks))),
+		Currency: ccg.CurrencyPair{Primary: obr.Instrument,
+			Secondary: obr.Currency},
+		BuyOrders:  ccg.Orders(make([]ccg.Order, len(obr.Bids))),
+		SellOrders: ccg.Orders(make([]ccg.Order, len(obr.Asks))),
 	}
 	for i, b := range obr.Bids {
 		if len(b) != 2 {
@@ -104,8 +104,8 @@ func min(a, b int) int {
 }
 
 //GetOrderBook gets the orders for the relevant currencies
-func (c BTCMarketsClient) GetOrderBook(PrimaryCurrency, SecondaryCurrency string) (ccg.OrderBook, error) {
-	all, err := getBody(c.Domain + "/market/" + PrimaryCurrency + "/" + SecondaryCurrency + "/orderbook")
+func (c BTCMarketsClient) GetOrderBook(Currency ccg.CurrencyPair) (ccg.OrderBook, error) {
+	all, err := getBody(c.Domain + "/market/" + Currency.Primary + "/" + Currency.Secondary + "/orderbook")
 	if err != nil {
 		return ccg.OrderBook{}, err
 	}
@@ -118,10 +118,10 @@ func (c BTCMarketsClient) GetOrderBook(PrimaryCurrency, SecondaryCurrency string
 }
 
 //GetRecentTrades gets most recent trades limited by historyAmount
-func (c BTCMarketsClient) GetRecentTrades(PrimaryCurrency, SecondaryCurrency string, historyAmount int) (ccg.RecentTrades, error) {
+func (c BTCMarketsClient) GetRecentTrades(Currency ccg.CurrencyPair, historyAmount int) (ccg.RecentTrades, error) {
 	var all []byte
 	var err error
-	all, err = getBody(c.Domain + "/market/" + PrimaryCurrency + "/" + SecondaryCurrency + "/trades")
+	all, err = getBody(c.Domain + "/market/" + Currency.Primary + "/" + Currency.Secondary + "/trades")
 	if err != nil {
 		return ccg.RecentTrades{}, err
 	}
@@ -131,7 +131,6 @@ func (c BTCMarketsClient) GetRecentTrades(PrimaryCurrency, SecondaryCurrency str
 		return ccg.RecentTrades{}, err
 	}
 	result := tr.convert(historyAmount)
-	result.PrimaryCurrency = PrimaryCurrency
-	result.SecondaryCurrency = SecondaryCurrency
+	result.Currency = Currency
 	return result, nil
 }

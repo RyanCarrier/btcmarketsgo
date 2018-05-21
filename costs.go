@@ -6,10 +6,10 @@ import (
 	ccg "github.com/RyanCarrier/cryptoclientgo"
 )
 
-//GetTransactionCost gets the cost of a specified transaction
-func (c BTCMarketsClient) GetTransactionCost(CurrencyFrom, CurrencyTo string) (ccg.Cost, error) {
-	fi := lookupIndex(CurrencyFrom)
-	ti := lookupIndex(CurrencyTo)
+//GetTransactionCost gets the cost of a specified transaction of secondary TO primary
+func (c BTCMarketsClient) GetTransactionCost(Currency ccg.CurrencyPair) (ccg.Cost, error) {
+	fi := lookupIndex(Currency.Secondary)
+	ti := lookupIndex(Currency.Primary)
 	if fi < 0 || ti < 0 {
 		return ccg.Cost{}, errors.New("Could not find the currencies")
 	}
